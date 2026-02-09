@@ -1,76 +1,219 @@
 package com.pixiemays.meownotes
 
-import android.app.Fragment
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.compose.*
+import androidx.navigation.navArgument
+import com.pixiemays.meownotes.data.Note
+import com.pixiemays.meownotes.ui.screens.*
+import com.pixiemays.meownotes.ui.theme.AppTheme
 import com.pixiemays.meownotes.ui.theme.MeowNotesTheme
-
-private val selectedFragment: String = "";
+import com.pixiemays.meownotes.viewmodel.NotesViewModel
+import com.pixiemays.meownotes.viewmodel.TasksViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         setContent {
-            MeowNotesTheme {
-                MeowNotesApp()
+            var currentTheme by remember { mutableStateOf(AppTheme.PURPLE) }
+            var isDarkMode by remember { mutableStateOf(false) }
+
+            MeowNotesTheme(
+                darkTheme = isDarkMode,
+                appTheme = currentTheme
+            ) {
+                MeowNotesApp(
+                    currentTheme = currentTheme,
+                    isDarkMode = isDarkMode,
+                    onThemeChange = { currentTheme = it },
+                    onDarkModeToggle = { isDarkMode = it }
+                )
             }
         }
     }
 }
 
-@PreviewScreenSizes
+@Preview
 @Composable
-fun MeowNotesApp() {
+fun MewoNotesPreview() {
+    var currentTheme by remember { mutableStateOf(AppTheme.PURPLE) }
+    var isDarkMode by remember { mutableStateOf(false) }
+
+    MeowNotesApp(
+        currentTheme = currentTheme,
+        isDarkMode = isDarkMode,
+        onThemeChange = { currentTheme = it },
+        onDarkModeToggle = { isDarkMode = it }
+    )
+}
+
+@Composable
+fun MeowNotesApp(
+    currentTheme: AppTheme,
+    isDarkMode: Boolean,
+    onThemeChange: (AppTheme) -> Unit,
+    onDarkModeToggle: (Boolean) -> Unit
+) {
     val navController = rememberNavController()
-    Column(Modifier.padding(8.dp)) {
-        NavHost(navController, startDestination = NavRoutes.Notes.route, modifier = Modifier.weight(1f)) {
-            composable(NavRoutes.Notes.route) { Notes() }
-            composable(NavRoutes.Tasks.route) { Tasks()  }
-            composable(NavRoutes.Settings.route) { Settings() }
+    val notesViewModel: NotesViewModel = viewModel()
+    val tasksViewModel: TasksViewModel = viewModel()
+
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
+    // Показывать нижнюю навигацию только на главных экранах
+    val showBottomBar = currentRoute in listOf(
+        NavRoutes.Notes.route,
+        NavRoutes.Tasks.route,
+        NavRoutes.Settings.route
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar) {
+                BottomNavigationBar(navController = navController)
+            }
         }
-        BottomNavigationBar(navController = navController)
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = NavRoutes.Notes.route,
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable(NavRoutes.Notes.route) {
+                NotesScreen(
+                    viewModel = notesViewModel,
+                    onNoteClick = { note ->
+                        navController.navigate("${NavRoutes.EditNote.route}/${note.id}")
+                    },
+                    onAddClick = {
+                        navController.navigate(NavRoutes.AddNote.route)
+                    }
+                )
+            }
+
+            composable(NavRoutes.Tasks.route) {
+                TasksScreen(
+                    viewModel = tasksViewModel,
+                    onTaskClick = { task ->
+                        navController.navigate("${NavRoutes.EditTask.route}/${task.id}")
+                    },
+                    onAddClick = {
+                        navController.navigate(NavRoutes.AddTask.route)
+                    }
+                )
+            }
+
+            composable(NavRoutes.Settings.route) {
+                SettingsScreen(
+                    currentTheme = currentTheme,
+                    isDarkMode = isDarkMode,
+                    onThemeChange = onThemeChange,
+                    onDarkModeToggle = onDarkModeToggle
+                )
+            }
+
+            composable(NavRoutes.AddNote.route) {
+                AddEditNoteScreen(
+                    onSave = { note ->
+                        notesViewModel.addNote(note)
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = "${NavRoutes.EditNote.route}/{noteId}",
+                arguments = listOf(navArgument("noteId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val noteId = backStackEntry.arguments?.getString("noteId")
+                val notes by notesViewModel.filteredNotes.collectAsState()
+                val note = notes.find { it.id == noteId }
+
+                if (note != null) {
+                    AddEditNoteScreen(
+                        note = note,
+                        onSave = { updatedNote ->
+                            notesViewModel.updateNote(updatedNote)
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+            }
+
+            composable(NavRoutes.AddTask.route) {
+                AddEditTaskScreen(
+                    onSave = { task ->
+                        tasksViewModel.addTask(task)
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = "${NavRoutes.EditTask.route}/{taskId}",
+                arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val taskId = backStackEntry.arguments?.getString("taskId")
+                val tasks by tasksViewModel.filteredTasks.collectAsState()
+                val task = tasks.find { it.id == taskId }
+
+                if (task != null) {
+                    AddEditTaskScreen(
+                        task = task,
+                        onSave = { updatedTask ->
+                            tasksViewModel.updateTask(updatedTask)
+                        },
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primaryContainer,
+
+    ) {
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = backStackEntry?.destination?.route
 
@@ -79,36 +222,27 @@ fun BottomNavigationBar(navController: NavController) {
                 selected = currentRoute == navItem.route,
                 onClick = {
                     navController.navigate(navItem.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {saveState = true}
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
                         launchSingleTop = true
                         restoreState = true
                     }
                 },
                 icon = {
-                    Icon(imageVector = navItem.icon,
-                        contentDescription = navItem.label)
+                    Icon(
+                        imageVector = navItem.icon,
+                        contentDescription = navItem.label
+                    )
                 },
                 label = {
                     Text(text = navItem.label)
-                }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer)
             )
         }
     }
-}
-
-@Composable
-fun Notes() {
-    Text("Notes", fontSize = 30.sp)
-}
-
-@Composable
-fun Tasks() {
-    Text("Tasks", fontSize = 30.sp)
-}
-
-@Composable
-fun Settings() {
-    Text("Settings", fontSize = 30.sp)
 }
 
 data class BarItem(
@@ -120,17 +254,17 @@ data class BarItem(
 object NavBarItems {
     val BarItems = listOf(
         BarItem(
-            label = "Notes",
+            label = "Заметки",
             icon = Icons.Default.Create,
             route = "notes"
         ),
         BarItem(
-            label = "Tasks",
+            label = "Задачи",
             icon = Icons.Default.CheckCircle,
             route = "tasks"
         ),
         BarItem(
-            label = "About",
+            label = "Настройки",
             icon = Icons.Default.Settings,
             route = "settings"
         )
@@ -141,4 +275,8 @@ sealed class NavRoutes(val route: String) {
     object Notes : NavRoutes("notes")
     object Tasks : NavRoutes("tasks")
     object Settings : NavRoutes("settings")
+    object AddNote : NavRoutes("add_note")
+    object EditNote : NavRoutes("edit_note")
+    object AddTask : NavRoutes("add_task")
+    object EditTask : NavRoutes("edit_task")
 }
