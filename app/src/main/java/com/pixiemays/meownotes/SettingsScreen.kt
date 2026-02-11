@@ -16,15 +16,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pixiemays.meownotes.ui.theme.AppTheme
+import com.pixiemays.meownotes.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    currentTheme: AppTheme,
-    isDarkMode: Boolean,
-    onThemeChange: (AppTheme) -> Unit,
-    onDarkModeToggle: (Boolean) -> Unit
+    viewModel: SettingsViewModel
 ) {
+    val userPreferences by viewModel.userPreferences.collectAsState()
+
+    val currentTheme = userPreferences?.appTheme ?: AppTheme.PURPLE
+    val isDarkMode = userPreferences?.isDarkMode ?: false
+
     var showThemeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -103,7 +106,7 @@ fun SettingsScreen(
 
                         Switch(
                             checked = isDarkMode,
-                            onCheckedChange = onDarkModeToggle
+                            onCheckedChange = { viewModel.updateDarkMode(it) }
                         )
                     }
                 }
@@ -252,7 +255,7 @@ fun SettingsScreen(
                             theme = theme,
                             isSelected = theme == currentTheme,
                             onClick = {
-                                onThemeChange(theme)
+                                viewModel.updateTheme(theme)
                                 showThemeDialog = false
                             }
                         )

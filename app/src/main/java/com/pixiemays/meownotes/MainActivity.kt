@@ -4,24 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -29,12 +20,12 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import com.pixiemays.meownotes.data.Note
 import com.pixiemays.meownotes.ui.screens.*
 import com.pixiemays.meownotes.ui.theme.AppTheme
 import com.pixiemays.meownotes.ui.theme.MeowNotesTheme
 import com.pixiemays.meownotes.viewmodel.NotesViewModel
 import com.pixiemays.meownotes.viewmodel.TasksViewModel
+import com.pixiemays.meownotes.viewmodel.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,8 +33,13 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         setContent {
-            var currentTheme by remember { mutableStateOf(AppTheme.PURPLE) }
-            var isDarkMode by remember { mutableStateOf(false) }
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModel.provideFactory()
+            )
+            val userPreferences by settingsViewModel.userPreferences.collectAsState()
+
+            val currentTheme = userPreferences?.appTheme ?: AppTheme.PURPLE
+            val isDarkMode = userPreferences?.isDarkMode ?: false
 
             MeowNotesTheme(
                 darkTheme = isDarkMode,
@@ -52,38 +48,26 @@ class MainActivity : ComponentActivity() {
                 MeowNotesApp(
                     currentTheme = currentTheme,
                     isDarkMode = isDarkMode,
-                    onThemeChange = { currentTheme = it },
-                    onDarkModeToggle = { isDarkMode = it }
+                    settingsViewModel = settingsViewModel
                 )
             }
         }
     }
 }
 
-@Preview
-@Composable
-fun MewoNotesPreview() {
-    var currentTheme by remember { mutableStateOf(AppTheme.PURPLE) }
-    var isDarkMode by remember { mutableStateOf(false) }
-
-    MeowNotesApp(
-        currentTheme = currentTheme,
-        isDarkMode = isDarkMode,
-        onThemeChange = { currentTheme = it },
-        onDarkModeToggle = { isDarkMode = it }
-    )
-}
-
 @Composable
 fun MeowNotesApp(
     currentTheme: AppTheme,
     isDarkMode: Boolean,
-    onThemeChange: (AppTheme) -> Unit,
-    onDarkModeToggle: (Boolean) -> Unit
+    settingsViewModel: SettingsViewModel
 ) {
     val navController = rememberNavController()
-    val notesViewModel: NotesViewModel = viewModel()
-    val tasksViewModel: TasksViewModel = viewModel()
+    val notesViewModel: NotesViewModel = viewModel(
+        factory = NotesViewModel.provideFactory()
+    )
+    val tasksViewModel: TasksViewModel = viewModel(
+        factory = TasksViewModel.provideFactory()
+    )
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -133,10 +117,7 @@ fun MeowNotesApp(
 
             composable(NavRoutes.Settings.route) {
                 SettingsScreen(
-                    currentTheme = currentTheme,
-                    isDarkMode = isDarkMode,
-                    onThemeChange = onThemeChange,
-                    onDarkModeToggle = onDarkModeToggle
+                    viewModel = settingsViewModel
                 )
             }
 
@@ -213,7 +194,7 @@ fun BottomNavigationBar(navController: NavController) {
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.primaryContainer,
 
-    ) {
+        ) {
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = backStackEntry?.destination?.route
 

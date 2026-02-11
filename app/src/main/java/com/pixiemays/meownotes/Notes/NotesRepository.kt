@@ -1,43 +1,42 @@
-package com.pixiemays.meownotes.data
+package com.pixiemays.meownotes.Notes
 
 import com.pixiemays.meownotes.SortType
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.pixiemays.meownotes.Database.NoteDao
+import com.pixiemays.meownotes.Database.toEntity
+import com.pixiemays.meownotes.Database.toNote
+import com.pixiemays.meownotes.data.Note
+import com.pixiemays.meownotes.data.NoteCategory
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-class NotesRepository {
-    private val _notes = MutableStateFlow<List<Note>>(emptyList())
-    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
+class NotesRepository(private val noteDao: NoteDao) {
 
-    fun addNote(note: Note) {
-        _notes.value = _notes.value + note
+    val notes: Flow<List<Note>> = noteDao.getAllNotes().map { entities ->
+        entities.map { it.toNote() }
     }
 
-    fun updateNote(note: Note) {
-        _notes.value = _notes.value.map {
-            if (it.id == note.id) note else it
-        }
+    suspend fun addNote(note: Note) {
+        noteDao.insertNote(note.toEntity())
     }
 
-    fun deleteNote(noteId: String) {
-        _notes.value = _notes.value.filter { it.id != noteId }
+    suspend fun updateNote(note: Note) {
+        noteDao.updateNote(note.toEntity())
     }
 
-    fun toggleNoteCompletion(noteId: String) {
-        _notes.value = _notes.value.map {
-            if (it.id == noteId) {
-                it.copy(
-                    modifiedDate = System.currentTimeMillis()
-                )
-            } else it
-        }
+    suspend fun deleteNote(noteId: String) {
+        noteDao.deleteNoteById(noteId)
+    }
+
+    suspend fun getNoteById(noteId: String): Note? {
+        return noteDao.getNoteById(noteId)?.toNote()
     }
 
     fun getFilteredAndSortedNotes(
+        notesList: List<Note>,
         category: NoteCategory?,
         sortType: SortType
     ): List<Note> {
-        var filtered = _notes.value
+        var filtered = notesList
 
         // Фильтрация по категории
         if (category != null) {

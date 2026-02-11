@@ -1,15 +1,18 @@
 package com.pixiemays.meownotes.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pixiemays.meownotes.FilterStatus
+import com.pixiemays.meownotes.MeowNotesApplication
 import com.pixiemays.meownotes.SortType
 import com.pixiemays.meownotes.data.*
-import com.pixiemays.meowtasks.data.TasksRepository
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
-class TasksViewModel : ViewModel() {
-    private val repository = TasksRepository()
+class TasksViewModel(
+    private val repository: TasksRepository
+) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow<TaskCategory?>(null)
     private val _filterStatus = MutableStateFlow(FilterStatus.ALL)
@@ -25,7 +28,7 @@ class TasksViewModel : ViewModel() {
         _filterStatus,
         _sortType
     ) { tasks, category, status, sort ->
-        repository.getFilteredAndSortedTasks(category, status, sort)
+        repository.getFilteredAndSortedTasks(tasks, category, status, sort)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -33,19 +36,27 @@ class TasksViewModel : ViewModel() {
     )
 
     fun addTask(task: Task) {
-        repository.addTask(task)
+        viewModelScope.launch {
+            repository.addTask(task)
+        }
     }
 
     fun updateTask(task: Task) {
-        repository.updateTask(task)
+        viewModelScope.launch {
+            repository.updateTask(task)
+        }
     }
 
     fun deleteTask(taskId: String) {
-        repository.deleteTask(taskId)
+        viewModelScope.launch {
+            repository.deleteTask(taskId)
+        }
     }
 
     fun toggleTaskCompletion(taskId: String) {
-        repository.toggleTaskCompletion(taskId)
+        viewModelScope.launch {
+            repository.toggleTaskCompletion(taskId)
+        }
     }
 
     fun setCategory(category: TaskCategory?) {
@@ -58,5 +69,16 @@ class TasksViewModel : ViewModel() {
 
     fun setSortType(sortType: SortType) {
         _sortType.value = sortType
+    }
+
+    companion object {
+        fun provideFactory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TasksViewModel(
+                    MeowNotesApplication.instance.tasksRepository
+                ) as T
+            }
+        }
     }
 }

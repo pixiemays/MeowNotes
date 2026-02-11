@@ -1,14 +1,19 @@
 package com.pixiemays.meownotes.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pixiemays.meownotes.FilterStatus
+import com.pixiemays.meownotes.MeowNotesApplication
+import com.pixiemays.meownotes.Notes.NotesRepository
 import com.pixiemays.meownotes.SortType
 import com.pixiemays.meownotes.data.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
-class NotesViewModel : ViewModel() {
-    private val repository = NotesRepository()
+class NotesViewModel(
+    private val repository: NotesRepository
+) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow<NoteCategory?>(null)
     private val _filterStatus = MutableStateFlow(FilterStatus.ALL)
@@ -23,7 +28,7 @@ class NotesViewModel : ViewModel() {
         _selectedCategory,
         _sortType
     ) { notes, category, sort ->
-        repository.getFilteredAndSortedNotes(category,  sort)
+        repository.getFilteredAndSortedNotes(notes, category, sort)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -31,19 +36,21 @@ class NotesViewModel : ViewModel() {
     )
 
     fun addNote(note: Note) {
-        repository.addNote(note)
+        viewModelScope.launch {
+            repository.addNote(note)
+        }
     }
 
     fun updateNote(note: Note) {
-        repository.updateNote(note)
+        viewModelScope.launch {
+            repository.updateNote(note)
+        }
     }
 
     fun deleteNote(noteId: String) {
-        repository.deleteNote(noteId)
-    }
-
-    fun toggleNoteCompletion(noteId: String) {
-        repository.toggleNoteCompletion(noteId)
+        viewModelScope.launch {
+            repository.deleteNote(noteId)
+        }
     }
 
     fun setCategory(category: NoteCategory?) {
@@ -56,5 +63,16 @@ class NotesViewModel : ViewModel() {
 
     fun setSortType(sortType: SortType) {
         _sortType.value = sortType
+    }
+
+    companion object {
+        fun provideFactory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return NotesViewModel(
+                    MeowNotesApplication.instance.notesRepository
+                ) as T
+            }
+        }
     }
 }

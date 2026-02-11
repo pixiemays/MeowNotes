@@ -1,52 +1,64 @@
-package com.pixiemays.meowtasks.data
+package com.pixiemays.meownotes.data
 
 import com.pixiemays.meownotes.FilterStatus
 import com.pixiemays.meownotes.SortType
-import com.pixiemays.meownotes.data.Task
-import com.pixiemays.meownotes.data.TaskCategory
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.pixiemays.meownotes.Database.TaskDao
+import com.pixiemays.meownotes.Database.toEntity
+import com.pixiemays.meownotes.Database.toTask
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-class TasksRepository {
-    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
-    val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
+class TasksRepository(private val taskDao: TaskDao) {
 
-    fun addTask(task: Task) {
-        _tasks.value = _tasks.value + task
+    val tasks: Flow<List<Task>> = taskDao.getAllTasks().map { entities ->
+        entities.map { it.toTask() }
     }
 
-    fun updateTask(task: Task) {
-        _tasks.value = _tasks.value.map {
-            if (it.id == task.id) task else it
-        }
+    suspend fun addTask(task: Task) {
+        taskDao.insertTask(task.toEntity())
     }
 
-    fun deleteTask(taskId: String) {
-        _tasks.value = _tasks.value.filter { it.id != taskId }
+    suspend fun updateTask(task: Task) {
+        taskDao.updateTask(task.toEntity())
     }
 
-    fun toggleTaskCompletion(taskId: String) {
-        _tasks.value = _tasks.value.map {
-            if (it.id == taskId) {
-                it.copy(
-                    isCompleted = !it.isCompleted,
-                    modifiedDate = System.currentTimeMillis()
-                )
-            } else it
+    suspend fun deleteTask(taskId: String) {
+        taskDao.deleteTaskById(taskId)
+    }
+
+    suspend fun getTaskById(taskId: String): Task? {
+        return taskDao.getTaskById(taskId)?.toTask()
+    }
+
+    suspend fun toggleTaskCompletion(taskId: String) {
+        val task = taskDao.getTaskById(taskId)
+        if (task != null) {
+            val updatedTask = task.copy(
+                isCompleted = !task.isCompleted,
+                modifiedDate = System.currentTimeMillis()
+            )
+            taskDao.updateTask(updatedTask)
         }
     }
 
     fun getFilteredAndSortedTasks(
+        tasksList: List<Task>,
         category: TaskCategory?,
         status: FilterStatus,
         sortType: SortType
     ): List<Task> {
-        var filtered = _tasks.value
+        var filtered = tasksList
 
         // Фильтрация по категории
         if (category != null) {
             filtered = filtered.filter { it.category == category }
+        }
+
+        // Фильтрация по статусу
+        filtered = when (status) {
+            FilterStatus.ALL -> filtered
+            FilterStatus.ACTIVE -> filtered.filter { !it.isCompleted }
+            FilterStatus.COMPLETED -> filtered.filter { it.isCompleted }
         }
 
         // Сортировка
