@@ -4,23 +4,30 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pixiemays.meownotes.MeowNotesApplication
+import com.pixiemays.meownotes.Preferences.UserPreferences
 import com.pixiemays.meownotes.Preferences.UserPreferencesRepository
 import com.pixiemays.meownotes.ui.theme.AppTheme
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class SettingsViewModel(
     private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
-    val userPreferences: StateFlow<com.pixiemays.meownotes.Preferences.UserPreferences?> =
+    private val initialPreferences = runBlocking {
+        preferencesRepository.userPreferencesFlow.first()
+    }
+
+    val userPreferences: StateFlow<UserPreferences?> =
         preferencesRepository.userPreferencesFlow
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(5000),
-                null
+                initialPreferences
             )
 
     fun updateTheme(theme: AppTheme) {

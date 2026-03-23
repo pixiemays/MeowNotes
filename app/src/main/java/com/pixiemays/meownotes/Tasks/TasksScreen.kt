@@ -28,12 +28,11 @@ fun TasksScreen(
     onTaskClick: (Task) -> Unit,
     onAddClick: () -> Unit
 ) {
-    val taskss by viewModel.filteredTasks.collectAsState()
+    val tasks by viewModel.filteredTasks.collectAsState()
     val filterStatus by viewModel.filterStatus.collectAsState()
 
-    val tasks = taskss.filter { !it.isCompleted || it.isCompleted }
-    val activeTasks = tasks.filter { !it.isCompleted }
-    val completedTasks = tasks.filter { it.isCompleted }
+    val activeTasks = remember(tasks) { tasks.filter { !it.isCompleted }}
+    val completedTasks = remember(tasks) { tasks.filter { it.isCompleted }}
 
     Scaffold(
         topBar = {
@@ -107,7 +106,7 @@ fun TasksScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(taskss, key = { it.id }) { task ->
+                    items(tasks, key = { it.id }) { task ->
                         TaskCard(
                             task = task,
                             onClick = { onTaskClick(task) },

@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -24,8 +27,8 @@ import com.pixiemays.meownotes.ui.screens.*
 import com.pixiemays.meownotes.ui.theme.AppTheme
 import com.pixiemays.meownotes.ui.theme.MeowNotesTheme
 import com.pixiemays.meownotes.viewmodel.NotesViewModel
-import com.pixiemays.meownotes.viewmodel.TasksViewModel
 import com.pixiemays.meownotes.viewmodel.SettingsViewModel
+import com.pixiemays.meownotes.viewmodel.TasksViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +75,6 @@ fun MeowNotesApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // Показывать нижнюю навигацию только на главных экранах
     val showBottomBar = currentRoute in listOf(
         NavRoutes.Notes.route,
         NavRoutes.Tasks.route,
@@ -89,7 +91,11 @@ fun MeowNotesApp(
         NavHost(
             navController = navController,
             startDestination = NavRoutes.Notes.route,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            enterTransition = { fadeIn(tween(120)) },
+            exitTransition = { fadeOut(tween(120)) },
+            popEnterTransition = { fadeIn(tween(120))},
+            popExitTransition = { fadeOut(tween(120))}
         ) {
             composable(NavRoutes.Notes.route) {
                 NotesScreen(
