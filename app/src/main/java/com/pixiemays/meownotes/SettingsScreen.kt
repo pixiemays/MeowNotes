@@ -37,7 +37,8 @@ fun SettingsScreen(
                     Text(
                         "Настройки",
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

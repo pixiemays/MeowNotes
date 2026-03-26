@@ -4,26 +4,45 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.pixiemays.meownotes.ui.screens.*
+import com.PratikFagadiya.smoothanimationbottombar.model.SmoothAnimationBottomBarScreens
+import com.PratikFagadiya.smoothanimationbottombar.properties.BottomBarProperties
+import com.PratikFagadiya.smoothanimationbottombar.ui.SmoothAnimationBottomBar
+import com.pixiemays.meownotes.Notes.AddEditNoteScreen
+import com.pixiemays.meownotes.ui.screens.AddEditTaskScreen
+import com.pixiemays.meownotes.ui.screens.NotesScreen
+import com.pixiemays.meownotes.ui.screens.SettingsScreen
+import com.pixiemays.meownotes.ui.screens.TasksScreen
 import com.pixiemays.meownotes.ui.theme.AppTheme
 import com.pixiemays.meownotes.ui.theme.MeowNotesTheme
 import com.pixiemays.meownotes.viewmodel.NotesViewModel
@@ -81,10 +100,14 @@ fun MeowNotesApp(
         NavRoutes.Settings.route
     )
 
+    val currentIndex = rememberSaveable {
+        mutableIntStateOf(0)
+    }
+
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                BottomNavigationBar(navController = navController)
+                BottomNavigationBar(navController, currentIndex)
             }
         }
     ) { paddingValues ->
@@ -92,10 +115,18 @@ fun MeowNotesApp(
             navController = navController,
             startDestination = NavRoutes.Notes.route,
             modifier = Modifier.padding(paddingValues),
-            enterTransition = { fadeIn(tween(120)) },
-            exitTransition = { fadeOut(tween(120)) },
-            popEnterTransition = { fadeIn(tween(120))},
-            popExitTransition = { fadeOut(tween(120))}
+            enterTransition = {
+                fadeIn(tween(durationMillis = 300, easing = LinearOutSlowInEasing))
+            },
+            exitTransition = {
+                fadeOut(tween(durationMillis = 200, easing = FastOutLinearInEasing))
+            },
+            popEnterTransition = {
+                fadeIn(tween(durationMillis = 300, easing = LinearOutSlowInEasing))
+            },
+            popExitTransition = {
+                fadeOut(tween(durationMillis = 200, easing = FastOutLinearInEasing))
+            }
         ) {
             composable(NavRoutes.Notes.route) {
                 NotesScreen(
@@ -131,6 +162,7 @@ fun MeowNotesApp(
                 AddEditNoteScreen(
                     onSave = { note ->
                         notesViewModel.addNote(note)
+                        navController.popBackStack()
                     },
                     onBack = {
                         navController.popBackStack()
@@ -156,7 +188,7 @@ fun MeowNotesApp(
                             navController.popBackStack()
                         }
                     )
-                }
+                } else { navController.popBackStack() }
             }
 
             composable(NavRoutes.AddTask.route) {
@@ -195,41 +227,33 @@ fun MeowNotesApp(
 }
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primaryContainer,
-
-        ) {
-        val backStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = backStackEntry?.destination?.route
-
-        NavBarItems.BarItems.forEach { navItem ->
-            NavigationBarItem(
-                selected = currentRoute == navItem.route,
-                onClick = {
-                    navController.navigate(navItem.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = {
-                    Icon(
-                        imageVector = navItem.icon,
-                        contentDescription = navItem.label
-                    )
-                },
-                label = {
-                    Text(text = navItem.label)
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer)
+fun BottomNavigationBar(
+    navController: NavHostController,
+    currentIndex: MutableState<Int>
+) {
+    val items = remember {
+        NavBarItems.BarItems.map { navItem ->
+            SmoothAnimationBottomBarScreens(
+                navItem.route,
+                navItem.label,
+                navItem.icon
             )
         }
     }
+
+    SmoothAnimationBottomBar(
+        navController = navController,
+        bottomNavigationItems = items,
+        initialIndex = currentIndex,
+        bottomBarProperties = BottomBarProperties(
+            backgroundColor = MaterialTheme.colorScheme.surface,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+            iconTintColor = MaterialTheme.colorScheme.primaryContainer,
+            iconTintActiveColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            textActiveColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            cornerRadius = 14.dp,
+        ),
+    ) {}
 }
 
 data class BarItem(

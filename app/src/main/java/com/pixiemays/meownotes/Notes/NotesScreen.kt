@@ -41,10 +41,10 @@ fun NotesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Заметки", fontWeight = FontWeight.Bold) },
+                title = { Text("Заметки", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
                 actions = {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.Default.Star, contentDescription = "Сортировка")
+                        Icon(Icons.Default.Star, contentDescription = "Сортировка", tint = MaterialTheme.colorScheme.primary)
                     }
 
                     // Меню сортировки

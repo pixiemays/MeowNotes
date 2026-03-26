@@ -42,7 +42,8 @@ fun TasksScreen(
                         Text(
                             "Задачи",
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             "${activeTasks.size} активных, ${completedTasks.size} завершённых",

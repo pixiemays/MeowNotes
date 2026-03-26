@@ -1,4 +1,4 @@
-package com.pixiemays.meownotes.ui.screens
+package com.pixiemays.meownotes.Notes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,7 +56,7 @@ fun AddEditNoteScreen(
                         onClick = {
                             if (canSave) {
                                 val newNote = if (isEditing) {
-                                    note!!.copy(
+                                    note.copy(
                                         title = title,
                                         content = content,
                                         category = selectedCategory,
@@ -167,10 +167,9 @@ fun AddEditNoteScreen(
         }
     }
 
-    // Диалог выбора категории
     if (showCategoryDialog) {
         AlertDialog(
-            onDismissRequest = { showCategoryDialog = false },
+            onDismissRequest = { },
             title = {
                 Text(
                     "Выберите категорию",
@@ -184,20 +183,19 @@ fun AddEditNoteScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
-                    items(NoteCategory.values()) { category ->
+                    items(NoteCategory.entries.toTypedArray()) { category ->
                         CategoryItem(
                             category = category,
                             isSelected = category == selectedCategory,
                             onClick = {
                                 selectedCategory = category
-                                showCategoryDialog = false
                             }
                         )
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showCategoryDialog = false }) {
+                TextButton(onClick = { }) {
                     Text("Закрыть")
                 }
             }
