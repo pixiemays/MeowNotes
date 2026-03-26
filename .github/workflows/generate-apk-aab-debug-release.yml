@@ -10,11 +10,6 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      release_name:
-        description: 'MeowNotes'
-        required: false
-        default: ''
 
 jobs:
   build-and-release:
@@ -33,10 +28,8 @@ jobs:
           echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
           VERSION=$(grep 'versionName' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)"/\1/')
-
           echo "version=v$VERSION" >> $GITHUB_ENV
           echo "tag_name=v$VERSION" >> $GITHUB_ENV
-          echo "is_prerelease=false" >> $GITHUB_ENV
 
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
@@ -57,12 +50,12 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name:  gradlew
+      - name: gradlew permissions
         run: chmod +x ./gradlew
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
-        
+
       - name: Rename APK
         run: |
           APK_SRC=$(find ${{ env.MODULE }}/build/outputs/apk/debug -name "*.apk" | head -1)
@@ -77,13 +70,28 @@ jobs:
           path: ${{ env.apk_path }}
           retention-days: 30
 
+      - name: Create tag
+        run: |
+          TAG="${{ env.tag_name }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG$"; then
+            echo "Тег $TAG уже существует, пропускаем"
+          else
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Тег $TAG создан"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag_name }}
           name: MeowNotes ${{ env.version }}
           draft: false
+          prerelease: false
           body: |
-            ### Changes
+            ## MeowNotes ${{ env.version }}
+            ### 📝 Изменения
             ${{ env.CHANGELOG }}
           files: ${{ env.apk_path }}
