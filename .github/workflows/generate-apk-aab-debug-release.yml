@@ -33,12 +33,19 @@ jobs:
           echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-            echo "is_tag=true" >> $GITHUB_ENV
+            VERSION="${GITHUB_REF#refs/tags/}"
+            TAG_NAME="$VERSION"
+            IS_PRERELEASE="false"
           else
-            echo "version=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-            echo "is_tag=false" >> $GITHUB_ENV
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            VERSION="dev-${SHORT_SHA}"
+            TAG_NAME="build-${{ github.run_number }}"
+            IS_PRERELEASE="true"
           fi
+
+          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_ENV
 
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
