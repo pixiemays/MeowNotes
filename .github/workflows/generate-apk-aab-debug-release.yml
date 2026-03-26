@@ -41,7 +41,8 @@ jobs:
             TAG_NAME="build-${{ github.run_number }}"
           fi
 
-          echo "version=$VERSION" >> $GITHUB_ENV
+          CLEAN_VERSION="${VERSION#v}"
+          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_ENV
           echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
 
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -87,7 +88,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag_name }}
-          name: MeowNotes ${{ env.version }}
+          name: MeowNotes ${{ env.clean_version }}
           draft: false
           body: |
             ### Changes
