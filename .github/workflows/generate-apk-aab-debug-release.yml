@@ -1,86 +1,89 @@
-name: MeowNotes
+name: MeowNotes CI/CD
 
 env:
-  # The name of the main module repository
-  main_project_module: MeowNotes
-
-  # The name of the Play Store
-  playstore_name: MeowNotes
+  MODULE: app
 
 on:
-
   push:
     branches:
       - 'release/**'
-
-  # Allows you to run this workflow manually from the Actions tab
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'MeowNotes'
+        required: false
+        default: ''
 
 jobs:
-  build:
-
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Set Current Date As Env Variable
-      - name: Set current date as env variable
-        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - name: Setup env
+        run: |
+          echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      # Set Repository Name As Env Variable
-      - name: Set repository name as env variable
-        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+          VERSION=$(grep 'versionName' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)"/\1/')
 
-      - name: Set Up JDK
+          echo "version=v$VERSION" >> $GITHUB_ENV
+          echo "tag_name=v$VERSION" >> $GITHUB_ENV
+          echo "is_prerelease=false" >> $GITHUB_ENV
+
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20)
+          else
+            CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s (%h)")
+          fi
+          {
+            echo "CHANGELOG<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu' # See 'Supported distributions' for available options
+          distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
 
-      - name: Change wrapper permissions
+      - name:  gradlew
         run: chmod +x ./gradlew
 
-      # Run Tests Build
-      - name: Run gradle tests
-        run: ./gradlew test
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+        
+      - name: Rename APK
+        run: |
+          APK_SRC=$(find ${{ env.MODULE }}/build/outputs/apk/debug -name "*.apk" | head -1)
+          APK_DST="${{ env.MODULE }}/build/outputs/apk/debug/MeowNotes-${{ env.version }}.apk"
+          mv "$APK_SRC" "$APK_DST"
+          echo "apk_path=$APK_DST" >> $GITHUB_ENV
 
-      # Run Build Project
-      - name: Build gradle project
-        run: ./gradlew build
-
-      # Create APK Debug
-      - name: Build apk debug project (APK) - ${{ env.main_project_module }} module
-        run: ./gradlew assembleDebug
-
-      # Create APK Release
-      - name: Build apk release project (APK) - ${{ env.main_project_module }} module
-        run: ./gradlew assemble
-
-      # Create Bundle AAB Release
-      # Noted for main module build [main_project_module]:bundleRelease
-      - name: Build app bundle release (AAB) - ${{ env.main_project_module }} module
-        run: ./gradlew ${{ env.main_project_module }}:bundleRelease
-
-      # Upload Artifact Build
-      # Noted For Output [main_project_module]/build/outputs/apk/debug/
-      - name: Upload APK Debug - ${{ env.repository_name }}
+      - name: Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.date_today }} - ${{ env.playstore_name }} - ${{ env.repository_name }} - APK(s) debug generated
-          path: ${{ env.main_project_module }}/build/outputs/apk/debug/
+          name: MeowNotes-${{ env.version }}-${{ env.date_today }}
+          path: ${{ env.apk_path }}
+          retention-days: 30
 
-      # Noted For Output [main_project_module]/build/outputs/apk/release/
-      - name: Upload APK Release - ${{ env.repository_name }}
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.date_today }} - ${{ env.playstore_name }} - ${{ env.repository_name }} - APK(s) release generated
-          path: ${{ env.main_project_module }}/build/outputs/apk/release/
-
-      # Noted For Output [main_project_module]/build/outputs/bundle/release/
-      - name: Upload AAB (App Bundle) Release - ${{ env.repository_name }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.date_today }} - ${{ env.playstore_name }} - ${{ env.repository_name }} - App bundle(s) AAB release generated
-          path: ${{ env.main_project_module }}/build/outputs/bundle/release/
+          tag_name: ${{ env.tag_name }}
+          name: MeowNotes ${{ env.version }}
+          draft: false
+          body: |
+            ### Changes
+            ${{ env.CHANGELOG }}
+          files: ${{ env.apk_path }}
