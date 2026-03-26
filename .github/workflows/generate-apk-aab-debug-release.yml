@@ -87,13 +87,12 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/release/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.is_tag == 'true' && env.version || format('build-{0}', github.run_number) }}
-          name: ${{ inputs.release_name != '' && inputs.release_name || format('MeowNotes {0}', env.version) }}
+          tag_name: ${{ env.tag_name }}
+          name: MeowNotes ${{ env.version }}
           draft: false
-          prerelease: ${{ env.is_tag != 'true' }}
+          prerelease: ${{ env.is_prerelease }}
           body: |
             ### Changes
             ${{ env.CHANGELOG }}
