@@ -6,7 +6,8 @@ env:
 on:
   push:
     branches:
-      - 'release/**'
+      - 'main'
+      - 'master'
     tags:
       - 'v*.*.*'
   workflow_dispatch:
