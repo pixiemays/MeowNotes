@@ -93,6 +93,6 @@ jobs:
           prerelease: false
           body: |
             ## MeowNotes ${{ env.version }}
-            ### 📝 Изменения
+            ### Changes
             ${{ env.CHANGELOG }}
           files: ${{ env.apk_path }}
